@@ -6,4 +6,5 @@ are animated gifs and screenshots of the results.
 
 <img src="B.png">
 <img src="C.png">
-<img src="FreemanAlley_show.gif">
+<img src="D1.png">
+<img src="D2.png">
