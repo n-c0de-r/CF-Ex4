@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>CG Exercise 4 - Part B</title>
+    <script type="application/javascript" src="dsliveupdate.js"></script>
+    <script type="application/javascript" src="utils/dsgltfutils.js"></script>
+    <!-- <script id="dsglinspector" src="http://imiedit.f4.htw-berlin.de:4000/Vorlesung/DS/util/dsglinspector.js"></script> -->
+</head>
+
+<body>
+
+    <h3>Student 'Name': Nermin Rustic</h3>
+
+    <canvas id="ds_draw_here" width="600" height="600" __spector_context_type="webgl"></canvas>
+    <img src="data/bsp1.jpg" hidden="" width="300px" id="dstex">
+
+    <script id="ds-vertex" type="notjs">
+      attribute vec4 a_position;
+      attribute vec2 a_texcoords;
+
+      varying vec2 v_texCO;
+
+    void main() {
+        gl_Position = a_position;
+        v_texCO = a_texcoords;
+    }
+    </script>
+
+    <script id="ds-fragment" type="notjs">
+    precision mediump float;
+    uniform sampler2D u_tex;
+    varying vec2 v_texCO;
+
+    void main() {
+        gl_FragColor = texture2D(u_tex, v_texCO);
+        // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+    </script>
+
+    <script>
+        // Get A WebGL context
+        var canvas_ds = document.getElementById('ds_draw_here');
+        var gl = canvas_ds.getContext('webgl');
+        gl.clearColor(0, 0, 0, 1);
+
+        var uvkoords =[
+          0, 0,
+          1, 1,
+          1, 0,
+
+          2, 2,
+          2, 0,
+          0, 0,
+
+          0, 0.4,
+          0.25, 0,
+          0, 0
+        ];
+
+        var s = 0.8;
+        var positions =[
+          -s, s,
+          s, -s*0.25,
+          s, s,
+
+          -s, -s*0.25,
+          -s, -s,
+          s, -s,
+
+          0, -s,
+          s, s*0.1,
+          -s*0.5, s*0.5
+        ];
+
+        //DS Use Code from the lecture here........
+        // Set shader source codes
+        const vertSource = document.getElementById("ds-vertex").innerText;
+        const fragSource = document.getElementById("ds-fragment").innerText;
+
+        // Actually link programms now
+        program = createProgram(gl, vertSource, fragSource);
+        gl.useProgram(program);
+
+        makeBuffer(gl, new Float32Array(positions));
+        pointAttributes(gl, program, "a_position", 2);
+
+        // Asynchronously load an image
+        var image = document.getElementById("dstex");
+        image.crossOrigin = "";
+
+        image.addEventListener('load', function() {
+            // Create texture via helper method
+            makeTexture(gl, image, gl.TEXTURE_2D);
+            
+            // Create a buffer for texcoords.
+            makeBuffer(gl, new Float32Array(uvkoords), gl.ARRAY_BUFFER);
+            pointAttributes(gl, program, "a_texcoords", 2, gl.FLOAT, false);
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // draw
+            var primitiveType = gl.TRIANGLES;
+            var offset = 0;
+            var count = 9;
+            gl.drawArrays(primitiveType, offset, count);
+        });
+    </script>
+
+  
+</body>
+
+</html>
