@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>CG Exercise 4 - Part D</title>
+    <script type="application/javascript" src="dsliveupdate.js"></script>
+    <!-- <script id="dsglinspector" src="http://imiedit.f4.htw-berlin.de:4000/Vorlesung/DS/util/dsglinspector.js"></script> -->
+    <script src="utils/dsgltfutils.js"></script>
+
+</head>
+
+<body>
+
+    <h3>Student 'Name':  Nermin Rustic</h3>
+    <canvas id="ds_draw_here"></canvas>
+
+    <script>
+        var gl, program, scene, utime;
+        const types = {"SCALAR":1, "VEC2":2, "VEC3":3, "VEC4":4, "MAT4":16};
+
+        // Get A WebGL context
+        var canvas_ds = document.getElementById("ds_draw_here");
+        canvas_ds.width = 800;
+        canvas_ds.height = 600;
+        
+        init();
+        
+        async function init() {
+            let buffers = [];
+            
+            gl = canvas_ds.getContext("webgl");
+            var ext = gl.getExtension('OES_element_index_uint');
+            // Allow INTEGER Indices
+            gl.enable(gl.DEPTH_TEST);
+            
+            const vertSource = await fetch("s_vertex.glsl").then(e => e.text());
+            const fragSource = await fetch("s_fragment.glsl").then(e => e.text());
+            
+            // create GLSL shaders, upload the GLSL source, compile the shaders
+            program = createProgram(gl, vertSource, fragSource);
+            gl.useProgram(program);
+           
+            let glTFScene = await readglTF("data/simpleDFreeman.gltf");
+            
+            for (let index = 0; index < glTFScene.buffers.length; index++) {
+                buffers[index] = await readglTFBin("data/" + glTFScene.buffers[index].uri);
+            };
+
+            scene = glTFScene.scenes[glTFScene.scene];
+
+            // Replace all indices with actual references
+            replaceReference(glTFScene, scene);
+
+            scene.nodes.forEach(node => {
+                let pos = node.mesh.primitives[0].attributes.POSITION;
+                let col = node.mesh.primitives[0].attributes.COLOR_0;
+                let idx = node.mesh.primitives[0].indices;
+                
+                // Slice & save position buffers via helper method
+                sliceBuffer (gl, pos, buffers[pos.bufferView.buffer]);
+                
+                // Slice & save color buffers via helper method
+                sliceBuffer (gl, col, buffers[col.bufferView.buffer]);
+
+                // Slice & save index buffers via helper method
+                sliceBuffer (gl, idx, buffers[idx.bufferView.buffer], gl.ELEMENT_ARRAY_BUFFER);
+            });
+
+            utime = gl.getUniformLocation(program, "u_time");
+
+            window.requestAnimationFrame(render);
+        }
+
+        function render(time) {
+            // Clear canvas
+            gl.clearColor(0.0, 0.0, 0.2, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // Pass uniform varaible to the fragment shader
+            gl.uniform1f (utime, time);
+
+            scene.nodes.forEach(node => {
+                let pos = node.mesh.primitives[0].attributes.POSITION;
+                let col = node.mesh.primitives[0].attributes.COLOR_0;
+                let idx = node.mesh.primitives[0].indices;
+                
+                // Bind & activate position & attribute
+                gl.bindBuffer(gl.ARRAY_BUFFER, pos.bufferView.glBuffer);
+                let type = pos.componentType;
+                let size = types[pos.type];
+                pointAttributes(gl, program, "a_position", size, type);
+                
+                // Bind & activate color buffer & attribute
+                gl.bindBuffer(gl.ARRAY_BUFFER, col.bufferView.glBuffer);
+                type = col.componentType;
+                size = types[col.type];
+                pointAttributes(gl, program, "a_color", size, type);
+                
+                // Bind & render index buffer
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx.bufferView.glBuffer);
+                type = idx.componentType;
+                let count = idx.count;
+                // size = types[idx.type];
+                gl.drawElements(gl.TRIANGLES, count, type, 0);
+                
+                // deactivate done attrributes
+                disableAttributes(gl, program, "a_position");
+                disableAttributes(gl, program, "a_color");
+            });
+            
+            window.requestAnimationFrame(render);
+        }
+    </script>
+</body>
+
+</html>

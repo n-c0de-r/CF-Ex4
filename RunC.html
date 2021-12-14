@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>CG Exercise 4 - Part C</title>
+
+</head>
+
+<body>
+
+    <h3>Student 'Name':  Nermin Rustic</h3>
+    <canvas id="ds_draw_here"></canvas>
+
+    <script id="vertexShaderSource" type="notjs">
+        attribute vec4 a_position;
+    // all shaders have a main function
+    //
+    void main() {
+       vec3 pp = a_position.xyz;
+       gl_Position = vec4(pp,5.*pp.z);
+       gl_PointSize = 1.0;
+    }
+  </script>
+
+    <script id="fragmentShaderSource" type="notjs">
+        precision mediump float;
+    void main() {
+        gl_FragColor = vec4(1, 0, 0.5, 1); // return redish-purple
+    }
+  
+  </script>
+    <script>
+        var gl, program;
+
+        const vertSource = document.getElementById("vertexShaderSource").innerText;
+        const fragSource = document.getElementById("fragmentShaderSource").innerText;
+        // Get A WebGL context
+        var canvas_ds = document.getElementById("ds_draw_here");
+        canvas_ds.width = 800;
+        canvas_ds.height = 600;
+        
+        init();
+        
+        async function init() {
+            gl = canvas_ds.getContext("webgl");
+            // Allow INTEGER Indices
+            var ext = gl.getExtension('OES_element_index_uint');
+            gl.enable(gl.DEPTH_TEST);
+            
+            // create GLSL shaders, upload the GLSL source, compile the shaders
+            program = createProgram(gl, vertSource, fragSource);
+            gl.useProgram(program);
+
+            var glTFScene = await readglTF("data/simpleAFreeman.nglTF");
+            var buffer = await readglTFBin("data/" + glTFScene.buffers[0].uri); //add relative path to freeman.ngltf
+
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            //DS Read in and show the data in the simpelest possible way!
+            let posBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            pointAttributes(gl, program, "a_position", 3);
+
+            for (let index = 0; index < glTFScene.meshes.length; index++) {
+                let posNr = glTFScene.meshes[index].primitives[0].attributes.POSITION;
+
+                let bufOff = glTFScene.bufferViews[posNr].byteOffset;
+                let bufLen = glTFScene.bufferViews[posNr].byteLength;
+
+                let bufPos = buffer.slice(bufOff, bufOff+bufLen);
+
+                gl.bufferData(gl.ARRAY_BUFFER, bufPos, gl.STATIC_DRAW);
+                gl.drawArrays(gl.POINTS,0,bufLen/12);
+            }
+        }
+    </script>
+</body>
+
+</html>
